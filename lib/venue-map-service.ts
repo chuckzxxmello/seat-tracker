@@ -1,6 +1,5 @@
-import { firestore, storage } from "./firebase"
+import { firestore } from "./firebase"
 import { doc, setDoc, getDoc, Timestamp } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 export interface VenueNode {
   id: string
@@ -356,19 +355,6 @@ export async function getVenueMap(): Promise<VenueMap | null> {
 
 export function loadLayoutTemplate(templateId: string): LayoutTemplate | null {
   return LAYOUT_TEMPLATES.find((t) => t.id === templateId) || null
-}
-
-export async function uploadBackgroundImage(file: File): Promise<string> {
-  try {
-    const storageRef = ref(storage, `venue-backgrounds/${Date.now()}-${file.name}`)
-    await uploadBytes(storageRef, file)
-    const downloadURL = await getDownloadURL(storageRef)
-    console.log("[v0] Background image uploaded successfully")
-    return downloadURL
-  } catch (error) {
-    console.error("[v0] Error uploading background image:", error)
-    throw error
-  }
 }
 
 /**

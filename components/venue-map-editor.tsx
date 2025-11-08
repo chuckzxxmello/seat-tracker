@@ -31,7 +31,6 @@ import {
   saveVenueMap,
   LAYOUT_TEMPLATES,
   loadLayoutTemplate,
-  uploadBackgroundImage,
 } from "@/lib/venue-map-service"
 import {
   Trash2,
@@ -612,36 +611,52 @@ function VenueMapEditorContent() {
     })
   }
 
-  const handleApplyCustomImage = () => {
+  const handleApplyCustomImage = async () => {
     if (customImageInput.trim()) {
-      setBackgroundImageUrl(customImageInput)
-      setCustomImageDialogOpen(false)
-      toast({
-        title: "Custom Background Applied",
-        description: "Custom image has been set as the background",
-      })
-    }
-  }
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
       try {
-        const downloadURL = await uploadBackgroundImage(file)
-        setBackgroundImageUrl(downloadURL)
+        try {
+          new URL(customImageInput)
+        } catch {
+          toast({
+            title: "Invalid URL",
+            description: "Please enter a valid image URL (e.g., https://example.com/image.jpg)",
+            variant: "destructive",
+          })
+          return
+        }
+
+        setBackgroundImageUrl(customImageInput)
+        setShowBackgroundImage(true)
+
+        const venueMap = await getVenueMap()
+        if (venueMap) {
+          await saveVenueMap({
+            ...venueMap,
+            customImageUrl: customImageInput,
+          })
+
+          toast({
+            title: "Custom Background Applied",
+            description: "Custom image has been set and saved as the background",
+          })
+        }
+
         setCustomImageDialogOpen(false)
-        toast({
-          title: "Image Uploaded",
-          description: "Your image has been uploaded and set as the background",
-        })
+        setCustomImageInput("")
       } catch (error) {
-        console.error("[v0] Error uploading image:", error)
+        console.error("[v0] Error saving custom image URL:", error)
         toast({
-          title: "Image Upload Failed",
-          description: "Could not upload image. Please try again.",
+          title: "Failed to Save Background",
+          description: "Image URL updated locally but failed to save to database",
           variant: "destructive",
         })
       }
+    } else {
+      toast({
+        title: "URL Required",
+        description: "Please enter an image URL to apply as background",
+        variant: "destructive",
+      })
     }
   }
 
@@ -866,8 +881,10 @@ function VenueMapEditorContent() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Upload Custom Background Image</DialogTitle>
-                    <DialogDescription>Enter an image URL or upload a file to use as the background</DialogDescription>
+                    <DialogTitle>Set Custom Background Image</DialogTitle>
+                    <DialogDescription>
+                      Enter an image URL to use as the venue map background. The image should be publicly accessible.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -876,13 +893,21 @@ function VenueMapEditorContent() {
                         value={customImageInput}
                         onChange={(e) => setCustomImageInput(e.target.value)}
                         placeholder="https://example.com/image.jpg"
+                        className="mt-1"
                       />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Paste a direct link to your venue floor plan image (JPG, PNG, etc.)
+                      </p>
                     </div>
-                    <div>
-                      <Label>Or Upload File</Label>
-                      <Input type="file" accept="image/*" onChange={handleFileUpload} />
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-xs text-blue-900 font-medium mb-1">How to get an image URL:</p>
+                      <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                        <li>Upload your image to a free service like Imgur, ImgBB, or Cloudinary</li>
+                        <li>Right-click the uploaded image and select "Copy image address"</li>
+                        <li>Paste the URL here and click Apply Image</li>
+                      </ul>
                     </div>
-                    <Button onClick={handleApplyCustomImage} className="w-full">
+                    <Button onClick={handleApplyCustomImage} className="w-full" disabled={!customImageInput.trim()}>
                       Apply Image
                     </Button>
                   </div>
@@ -955,7 +980,7 @@ function VenueMapEditorContent() {
 
           <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-slate-700 mt-3">
             <p className="font-medium mb-1 text-emerald-900">How to use:</p>
-            <ul className="list-disc list-inside space-y-1 text-slate-600 text-xs">
+            <ul className="list-disc list-inside space-y-1 text-xs">
               <li>Load predefined templates for quick setup (Standard Tables, VIP Section, Wedding, Conference)</li>
               <li>Nodes are rendered as small circles (32px diameter) for precise seating visualization</li>
               <li>Use default zoom controls to set initial scale for real-world dimensions</li>
