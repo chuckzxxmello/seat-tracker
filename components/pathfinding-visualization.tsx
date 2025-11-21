@@ -99,7 +99,6 @@ export function PathfindingVisualization({
 
   const clampZoom = (z: number) => Math.min(4, Math.max(0.5, z))
 
-  // Zoom around a given screen point (Google Maps style)
   const zoomAtPoint = (factor: number, clientX: number, clientY: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -127,7 +126,6 @@ export function PathfindingVisualization({
     })
   }
 
-  // Zoom around canvas center (for buttons)
   const zoomToCenter = (factor: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -192,12 +190,9 @@ export function PathfindingVisualization({
   // --- Pointer handlers: drag + pinch ---------------------------------------
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Double-tap zoom for touch
     if (e.pointerType === "touch") {
       const used = handleTouchDoubleTapCheck(e)
-      if (used) {
-        return
-      }
+      if (used) return
     }
 
     const id = e.pointerId
@@ -280,7 +275,6 @@ export function PathfindingVisualization({
     endPointer(e)
   }
 
-  // Mouse-wheel zoom (only when cursor is over canvas)
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_IN : WHEEL_ZOOM_OUT
@@ -306,71 +300,18 @@ export function PathfindingVisualization({
     const rawWidth = rawMaxX - rawMinX
     const rawHeight = rawMaxY - rawMinY
 
-    // Find selected node (for centering/zooming)
-    const selectedNode = (() => {
-      if (!seatId) return null
-      return venueNodes.find((node) => {
-        const tableNum = node.label.match(/\d+/)?.[0]
-        const isSelectedType =
-          (isVip && node.type === "vip-table") || (!isVip && node.type === "table")
-        return isSelectedType && tableNum === String(seatId)
-      })
-    })()
-
-    // Base bounds (full map)
-    let focusMinX = rawMinX
-    let focusMaxX = rawMaxX
-    let focusMinY = rawMinY
-    let focusMaxY = rawMaxY
-
-    // Crop around selected table a bit
-    if (selectedNode) {
-      const focusFactor = 1.4
-      const focusWidth = rawWidth / focusFactor
-      const focusHeight = rawHeight / focusFactor
-
-      let desiredMinX = selectedNode.x - focusWidth / 2
-      let desiredMaxX = selectedNode.x + focusWidth / 2
-      let desiredMinY = selectedNode.y - focusHeight / 2
-      let desiredMaxY = selectedNode.y + focusHeight / 2
-
-      if (desiredMinX < rawMinX) {
-        const diff = rawMinX - desiredMinX
-        desiredMinX += diff
-        desiredMaxX += diff
-      }
-      if (desiredMaxX > rawMaxX) {
-        const diff = desiredMaxX - rawMaxX
-        desiredMinX -= diff
-        desiredMaxX -= diff
-      }
-      if (desiredMinY < rawMinY) {
-        const diff = rawMinY - desiredMinY
-        desiredMinY += diff
-        desiredMaxY += diff
-      }
-      if (desiredMaxY > rawMaxY) {
-        const diff = desiredMaxY - rawMaxY
-        desiredMinY -= diff
-        desiredMaxY -= diff
-      }
-
-      focusMinX = desiredMinX
-      focusMaxX = desiredMaxX
-      focusMinY = desiredMinY
-      focusMaxY = desiredMaxY
-    }
-
+    // ➜ IMPORTANT CHANGE:
+    // Always use the FULL map bounds (no cropping around the selected seat)
     const margin = 40
-    const minX = focusMinX - margin
-    const maxX = focusMaxX + margin
-    const minY = focusMinY - margin
-    const maxY = focusMaxY + margin
+    const minX = rawMinX - margin
+    const maxX = rawMaxX + margin
+    const minY = rawMinY - margin
+    const maxY = rawMaxY + margin
 
     const contentWidth = maxX - minX
     const contentHeight = maxY - minY
 
-    // Use container size (fullscreen or embedded) instead of fixed 1400px
+    // Use container size (fullscreen or embedded)
     const parent = canvas.parentElement as HTMLElement | null
     const canvasWidth = parent?.clientWidth ?? 1400
     const canvasHeight =
@@ -379,7 +320,7 @@ export function PathfindingVisualization({
     canvas.width = canvasWidth
     canvas.height = canvasHeight
 
-    // Scale so that the whole map fits inside the container
+    // Scale so the WHOLE map fits inside the container
     const scaleX = canvasWidth / contentWidth
     const scaleY = canvasHeight / contentHeight
     const scale = Math.min(scaleX, scaleY)
