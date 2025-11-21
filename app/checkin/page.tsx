@@ -166,6 +166,11 @@ export default function CheckinPage() {
               <h2 className="text-base md:text-lg font-semibold text-slate-900 leading-tight">
                 Venue Map
               </h2>
+            <p className="text-xs md:text-sm text-slate-600 p-3 md:p-4 bg-blue-50 rounded-lg leading-relaxed">
+              Your assigned seat is{" "}
+              <strong className="text-blue-700">Seat {selectedAttendee.assignedSeat || "Not Yet Assigned"}</strong>.
+              Look for the highlighted table with the orange circle on the map above.
+            </p>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 {!selectedAttendee.checkedIn ? (
                   <Button
@@ -205,11 +210,7 @@ export default function CheckinPage() {
               </div>
             )}
 
-            <p className="text-xs md:text-sm text-slate-600 p-3 md:p-4 bg-blue-50 rounded-lg leading-relaxed">
-              Your assigned seat is{" "}
-              <strong className="text-blue-700">Seat {selectedAttendee.assignedSeat || "Not Yet Assigned"}</strong>.
-              Look for the highlighted table with the orange circle on the map above.
-            </p>
+
           </Card>
         )}
       </main>
