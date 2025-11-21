@@ -36,6 +36,9 @@ export function PathfindingVisualization({
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
+  // pinch-zoom tracking
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
+
   // Load venue nodes from Firebase
   useEffect(() => {
     async function loadVenueData() {
@@ -80,7 +83,48 @@ export function PathfindingVisualization({
     }
   }, [seatId, venueNodes, isVip])
 
-  // Drag / pan handlers
+  // --- Zoom/pan helpers ------------------------------------------------------
+
+  const clampZoom = (z: number) => Math.min(3, Math.max(0.5, z))
+
+  // Zoom around a specific screen point (Google-Maps style)
+  const zoomAtPoint = (factor: number, clientX: number, clientY: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+
+    setZoom((prevZoom) => {
+      const targetZoom = clampZoom(prevZoom * factor)
+      const actualFactor = targetZoom / prevZoom
+      if (actualFactor === 1) return prevZoom
+
+      setPan((prevPan) => {
+        // world coords currently under cursor
+        const worldX = (x - prevPan.x) / prevZoom
+        const worldY = (y - prevPan.y) / prevZoom
+
+        return {
+          x: x - worldX * targetZoom,
+          y: y - worldY * targetZoom,
+        }
+      })
+
+      return targetZoom
+    })
+  }
+
+  // Zoom around canvas center (for buttons)
+  const zoomToCenter = (factor: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2)
+  }
+
+  // Drag / pan handlers (mouse)
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true)
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
@@ -96,25 +140,63 @@ export function PathfindingVisualization({
 
   const handleMouseUp = () => setIsDragging(false)
 
+  // Mouse-wheel zoom
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const factor = e.deltaY < 0 ? 1.1 : 0.9
+    zoomAtPoint(factor, e.clientX, e.clientY)
+  }
+
+  // Touch handlers: one-finger drag, two-finger pinch zoom
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    const touch = e.touches[0]
-    setIsDragging(true)
-    setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      setIsDragging(true)
+      setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
+      setLastTouchDistance(null)
+    } else if (e.touches.length === 2) {
+      e.preventDefault()
+      const [t1, t2] = [e.touches[0], e.touches[1]]
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
+      setLastTouchDistance(dist)
+      setIsDragging(false)
+    }
   }
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return
-    const touch = e.touches[0]
-    setPan({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y,
-    })
+    if (e.touches.length === 1 && isDragging) {
+      const touch = e.touches[0]
+      setPan({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y,
+      })
+    } else if (e.touches.length === 2 && lastTouchDistance) {
+      e.preventDefault()
+      const [t1, t2] = [e.touches[0], e.touches[1]]
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
+      if (dist === 0) return
+
+      const factor = dist / lastTouchDistance
+      const centerX = (t1.clientX + t2.clientX) / 2
+      const centerY = (t1.clientY + t2.clientY) / 2
+
+      zoomAtPoint(factor, centerX, centerY)
+      setLastTouchDistance(dist)
+    }
   }
 
-  const handleTouchEnd = () => setIsDragging(false)
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false)
+      setLastTouchDistance(null)
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
+    }
+  }
 
-  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.25, 3))
-  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.25, 0.5))
+  const handleZoomIn = () => zoomToCenter(1.25)
+  const handleZoomOut = () => zoomToCenter(0.8)
 
   const handleResetView = () => {
     setZoom(initialZoom)
@@ -164,8 +246,7 @@ export function PathfindingVisualization({
     let focusMinY = rawMinY
     let focusMaxY = rawMaxY
 
-    // If we have a selected node, crop the bounds a bit around it
-    // so that it appears near the center with a mild zoom.
+    // If we have a selected node, crop the bounds around it
     if (selectedNode) {
       const focusFactor = 1.4 // 1.0 = full map, >1 = zoom in
       const focusWidth = rawWidth / focusFactor
@@ -206,7 +287,7 @@ export function PathfindingVisualization({
       focusMaxY = desiredMaxY
     }
 
-    // Add a bit of outer margin (to remove huge white borders / keep fit)
+    // Add a bit of outer margin
     const margin = 40
     const minX = focusMinX - margin
     const maxX = focusMaxX + margin
@@ -216,7 +297,7 @@ export function PathfindingVisualization({
     const contentWidth = maxX - minX
     const contentHeight = maxY - minY
 
-    // Logical canvas size (fixed width for resolution, height by aspect)
+    // Logical canvas size
     const canvasWidth = 1400
     const scale = canvasWidth / contentWidth
     const canvasHeight = Math.ceil(contentHeight * scale)
@@ -224,7 +305,7 @@ export function PathfindingVisualization({
     canvas.width = canvasWidth
     canvas.height = canvasHeight
 
-    // Clear & background
+    // Background
     ctx.fillStyle = "#FFFFFF"
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -352,10 +433,11 @@ export function PathfindingVisualization({
 
     ctx.restore()
 
-    // initial zoom: 1:1
+    // initial zoom baseline
     if (initialZoom !== 1) {
       setInitialZoom(1)
       setZoom(1)
+      setPan({ x: 0, y: 0 })
     }
   }, [seatId, venueNodes, isVip, zoom, pan, initialZoom])
 
@@ -405,6 +487,7 @@ export function PathfindingVisualization({
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -440,7 +523,10 @@ export function PathfindingVisualization({
               <span className="font-semibold text-blue-700 text-base md:text-lg block md:inline mb-1 md:mb-0">
                 {isVip ? "VIP " : ""}Seat Number {seatId}
               </span>
-              <span className="block md:inline text-xs md:text-sm"> - Highlighted on the map below</span>
+              <span className="block md:inline text-xs md:text-sm">
+                {" "}
+                - Highlighted on the map below
+              </span>
             </p>
             <Button variant="ghost" size="sm" onClick={toggleFullscreen} className="ml-2">
               <Maximize2 className="w-4 h-4 md:w-5 md:h-5" />
@@ -448,7 +534,7 @@ export function PathfindingVisualization({
           </div>
         )}
 
-        {/* Map area (fits width on mobile, tall enough to feel full-screen-ish) */}
+        {/* Map area */}
         <div className="w-full bg-white flex items-center justify-center p-3 md:p-4">
           <div className="w-full h-[75vh] md:h-[550px] lg:h-[650px] max-w-full">
             <canvas
@@ -458,6 +544,7 @@ export function PathfindingVisualization({
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
