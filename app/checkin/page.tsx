@@ -164,7 +164,7 @@ export default function CheckinPage() {
           <Card className="bg-white border-blue-200 p-4 md:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-semibold text-slate-900 leading-tight">
-                Venue Map - Seat {selectedAttendee.assignedSeat || "TBD"}
+                Venue Map
               </h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 {!selectedAttendee.checkedIn ? (
