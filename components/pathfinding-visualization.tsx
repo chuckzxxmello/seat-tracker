@@ -28,16 +28,16 @@ export function PathfindingVisualization({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // canvas zoom/pan (view-space)
+  // zoom / pan
   const [zoom, setZoom] = useState(1)
-  const [initialZoom, setInitialZoom] = useState(1)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
-  // pinch-zoom tracking
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
+  // pointer / gesture state (for mouse + touch)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const lastPinchDistanceRef = useRef<number | null>(null)
+  const dragPointerIdRef = useRef<number | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
   // Load venue nodes from Firebase
   useEffect(() => {
@@ -83,11 +83,11 @@ export function PathfindingVisualization({
     }
   }, [seatId, venueNodes, isVip])
 
-  // --- Zoom/pan helpers ------------------------------------------------------
+  // --- Zoom / pan helpers ----------------------------------------------------
 
   const clampZoom = (z: number) => Math.min(3, Math.max(0.5, z))
 
-  // Zoom around a specific screen point (Google-Maps style)
+  // Zoom around a given screen point (Google Maps style)
   const zoomAtPoint = (factor: number, clientX: number, clientY: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -102,7 +102,6 @@ export function PathfindingVisualization({
       if (actualFactor === 1) return prevZoom
 
       setPan((prevPan) => {
-        // world coords currently under cursor
         const worldX = (x - prevPan.x) / prevZoom
         const worldY = (y - prevPan.y) / prevZoom
 
@@ -124,82 +123,11 @@ export function PathfindingVisualization({
     zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2)
   }
 
-  // Drag / pan handlers (mouse)
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    })
-  }
-
-  const handleMouseUp = () => setIsDragging(false)
-
-  // Mouse-wheel zoom
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const factor = e.deltaY < 0 ? 1.1 : 0.9
-    zoomAtPoint(factor, e.clientX, e.clientY)
-  }
-
-  // Touch handlers: one-finger drag, two-finger pinch zoom
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 1) {
-      const touch = e.touches[0]
-      setIsDragging(true)
-      setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
-      setLastTouchDistance(null)
-    } else if (e.touches.length === 2) {
-      e.preventDefault()
-      const [t1, t2] = [e.touches[0], e.touches[1]]
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
-      setLastTouchDistance(dist)
-      setIsDragging(false)
-    }
-  }
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 1 && isDragging) {
-      const touch = e.touches[0]
-      setPan({
-        x: touch.clientX - dragStart.x,
-        y: touch.clientY - dragStart.y,
-      })
-    } else if (e.touches.length === 2 && lastTouchDistance) {
-      e.preventDefault()
-      const [t1, t2] = [e.touches[0], e.touches[1]]
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
-      if (dist === 0) return
-
-      const factor = dist / lastTouchDistance
-      const centerX = (t1.clientX + t2.clientX) / 2
-      const centerY = (t1.clientY + t2.clientY) / 2
-
-      zoomAtPoint(factor, centerX, centerY)
-      setLastTouchDistance(dist)
-    }
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 0) {
-      setIsDragging(false)
-      setLastTouchDistance(null)
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0]
-      setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
-    }
-  }
-
   const handleZoomIn = () => zoomToCenter(1.25)
   const handleZoomOut = () => zoomToCenter(0.8)
 
   const handleResetView = () => {
-    setZoom(initialZoom)
+    setZoom(1)
     setPan({ x: 0, y: 0 })
   }
 
@@ -210,7 +138,96 @@ export function PathfindingVisualization({
     }
   }
 
-  // Draw the venue onto the canvas
+  // --- Pointer handlers: drag + pinch ---------------------------------------
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const id = e.pointerId
+    pointersRef.current.set(id, { x: e.clientX, y: e.clientY })
+    ;(e.target as HTMLElement).setPointerCapture(id)
+
+    const pointers = [...pointersRef.current.entries()]
+
+    if (pointers.length === 1) {
+      // start drag with this pointer
+      dragPointerIdRef.current = id
+      dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
+      lastPinchDistanceRef.current = null
+    } else if (pointers.length === 2) {
+      // start pinch
+      const [, p1] = pointers[0]
+      const [, p2] = pointers[1]
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
+      lastPinchDistanceRef.current = dist
+      dragPointerIdRef.current = null
+    }
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const id = e.pointerId
+    if (!pointersRef.current.has(id)) return
+
+    pointersRef.current.set(id, { x: e.clientX, y: e.clientY })
+
+    const pointers = [...pointersRef.current.values()]
+
+    if (pointers.length === 1 && dragPointerIdRef.current === id) {
+      // drag (pan)
+      setPan({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y,
+      })
+    } else if (pointers.length >= 2 && lastPinchDistanceRef.current) {
+      // pinch zoom
+      e.preventDefault()
+      const [p1, p2] = pointers
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
+      if (dist === 0) return
+
+      const factor = dist / lastPinchDistanceRef.current
+      const centerX = (p1.x + p2.x) / 2
+      const centerY = (p1.y + p2.y) / 2
+
+      zoomAtPoint(factor, centerX, centerY)
+      lastPinchDistanceRef.current = dist
+    }
+  }
+
+  const endPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const id = e.pointerId
+    pointersRef.current.delete(id)
+    ;(e.target as HTMLElement).releasePointerCapture(id)
+
+    const remaining = [...pointersRef.current.entries()]
+
+    if (remaining.length === 0) {
+      dragPointerIdRef.current = null
+      lastPinchDistanceRef.current = null
+    } else if (remaining.length === 1) {
+      // if we were pinching and one finger lifts, remaining finger becomes drag
+      const [remainingId, point] = remaining[0]
+      dragPointerIdRef.current = remainingId
+      dragStartRef.current = { x: point.x - pan.x, y: point.y - pan.y }
+      lastPinchDistanceRef.current = null
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    endPointer(e)
+  }
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    endPointer(e)
+  }
+
+  // Mouse-wheel zoom (only when cursor is on map)
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault() // stop page scroll while on canvas
+    const factor = e.deltaY < 0 ? 1.1 : 0.9
+    zoomAtPoint(factor, e.clientX, e.clientY)
+  }
+
+  // --- Drawing --------------------------------------------------------------
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || venueNodes.length === 0) return
@@ -218,7 +235,6 @@ export function PathfindingVisualization({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // --- COMPUTE BOUNDS ------------------------------------------------------
     const allX = venueNodes.map((n) => n.x)
     const allY = venueNodes.map((n) => n.y)
     const rawMinX = Math.min(...allX)
@@ -246,9 +262,9 @@ export function PathfindingVisualization({
     let focusMinY = rawMinY
     let focusMaxY = rawMaxY
 
-    // If we have a selected node, crop the bounds around it
+    // Crop around selected table a bit
     if (selectedNode) {
-      const focusFactor = 1.4 // 1.0 = full map, >1 = zoom in
+      const focusFactor = 1.4
       const focusWidth = rawWidth / focusFactor
       const focusHeight = rawHeight / focusFactor
 
@@ -257,7 +273,6 @@ export function PathfindingVisualization({
       let desiredMinY = selectedNode.y - focusHeight / 2
       let desiredMaxY = selectedNode.y + focusHeight / 2
 
-      // Clamp horizontally within full bounds
       if (desiredMinX < rawMinX) {
         const diff = rawMinX - desiredMinX
         desiredMinX += diff
@@ -268,8 +283,6 @@ export function PathfindingVisualization({
         desiredMinX -= diff
         desiredMaxX -= diff
       }
-
-      // Clamp vertically within full bounds
       if (desiredMinY < rawMinY) {
         const diff = rawMinY - desiredMinY
         desiredMinY += diff
@@ -287,7 +300,6 @@ export function PathfindingVisualization({
       focusMaxY = desiredMaxY
     }
 
-    // Add a bit of outer margin
     const margin = 40
     const minX = focusMinX - margin
     const maxX = focusMaxX + margin
@@ -297,7 +309,6 @@ export function PathfindingVisualization({
     const contentWidth = maxX - minX
     const contentHeight = maxY - minY
 
-    // Logical canvas size
     const canvasWidth = 1400
     const scale = canvasWidth / contentWidth
     const canvasHeight = Math.ceil(contentHeight * scale)
@@ -305,7 +316,6 @@ export function PathfindingVisualization({
     canvas.width = canvasWidth
     canvas.height = canvasHeight
 
-    // Background
     ctx.fillStyle = "#FFFFFF"
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -370,7 +380,6 @@ export function PathfindingVisualization({
         ctx.textBaseline = "middle"
         ctx.fillText("PHOTO", pos.x, pos.y)
       } else if (node.type === "edge-node") {
-        // Skip drawing edge helper nodes
         return
       } else if (node.type === "custom" || node.type === "waypoint" || node.type === "intersection") {
         ctx.fillStyle = "#8B5CF6"
@@ -432,21 +441,16 @@ export function PathfindingVisualization({
     })
 
     ctx.restore()
-
-    // initial zoom baseline
-    if (initialZoom !== 1) {
-      setInitialZoom(1)
-      setZoom(1)
-      setPan({ x: 0, y: 0 })
-    }
-  }, [seatId, venueNodes, isVip, zoom, pan, initialZoom])
+  }, [seatId, venueNodes, isVip, zoom, pan])
 
   if (isLoading) {
     return (
       <Card className="bg-white border-blue-200 p-6 md:p-8">
         <div className="flex items-center justify-center gap-3">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-          <p className="text-slate-600 text-center text-sm md:text-base">Loading venue map...</p>
+          <p className="text-slate-600 text-center text-sm md:text-base">
+            Loading venue map...
+          </p>
         </div>
       </Card>
     )
@@ -459,12 +463,25 @@ export function PathfindingVisualization({
           <AlertCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
           <div>
             <h3 className="font-semibold text-sm md:text-base">Venue Map Not Configured</h3>
-            <p className="text-xs md:text-sm">Please set up the venue map in the admin panel first.</p>
+            <p className="text-xs md:text-sm">
+              Please set up the venue map in the admin panel first.
+            </p>
           </div>
         </div>
       </Card>
     )
   }
+
+  const canvasProps = {
+    ref: canvasRef,
+    className: "w-full h-full object-contain cursor-move touch-none", // touch-none => touch-action: none
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerCancel,
+    onPointerLeave: handlePointerUp,
+    onWheel: handleWheel,
+  } as const
 
   return (
     <>
@@ -480,20 +497,8 @@ export function PathfindingVisualization({
             </Button>
           </div>
           <div ref={containerRef} className="flex-1 overflow-hidden bg-white">
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full object-contain cursor-move touch-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onWheel={handleWheel}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            />
+            <canvas {...canvasProps} />
           </div>
-          {/* Zoom controls in fullscreen */}
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-center gap-3">
             <Button variant="outline" size="icon" onClick={handleZoomOut}>
               <ZoomOut className="w-4 h-4" />
@@ -534,21 +539,9 @@ export function PathfindingVisualization({
           </div>
         )}
 
-        {/* Map area */}
         <div className="w-full bg-white flex items-center justify-center p-3 md:p-4">
           <div className="w-full h-[75vh] md:h-[550px] lg:h-[650px] max-w-full">
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full object-contain cursor-move touch-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onWheel={handleWheel}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            />
+            <canvas {...canvasProps} />
           </div>
         </div>
       </Card>
