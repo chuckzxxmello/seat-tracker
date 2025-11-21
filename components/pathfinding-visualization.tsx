@@ -33,11 +33,23 @@ export function PathfindingVisualization({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
 
-  // pointer / gesture state (for mouse + touch)
+  // pointer / gesture state (mouse + touch)
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
   const lastPinchDistanceRef = useRef<number | null>(null)
+
+  // dragging
   const dragPointerIdRef = useRef<number | null>(null)
-  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const lastDragPosRef = useRef<{ x: number; y: number } | null>(null)
+
+  // double-tap / double-click
+  const lastTapTimeRef = useRef<number | null>(null)
+  const lastTapPosRef = useRef<{ x: number; y: number } | null>(null)
+
+  // tuning
+  const PAN_SPEED = 1.4                 // >1 = faster slide
+  const WHEEL_ZOOM_IN = 1.2
+  const WHEEL_ZOOM_OUT = 0.8
+  const DOUBLE_TAP_ZOOM = 1.6
 
   // Load venue nodes from Firebase
   useEffect(() => {
@@ -85,7 +97,7 @@ export function PathfindingVisualization({
 
   // --- Zoom / pan helpers ----------------------------------------------------
 
-  const clampZoom = (z: number) => Math.min(3, Math.max(0.5, z))
+  const clampZoom = (z: number) => Math.min(4, Math.max(0.5, z))
 
   // Zoom around a given screen point (Google Maps style)
   const zoomAtPoint = (factor: number, clientX: number, clientY: number) => {
@@ -123,8 +135,8 @@ export function PathfindingVisualization({
     zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2)
   }
 
-  const handleZoomIn = () => zoomToCenter(1.25)
-  const handleZoomOut = () => zoomToCenter(0.8)
+  const handleZoomIn = () => zoomToCenter(DOUBLE_TAP_ZOOM)
+  const handleZoomOut = () => zoomToCenter(1 / DOUBLE_TAP_ZOOM)
 
   const handleResetView = () => {
     setZoom(1)
@@ -138,9 +150,58 @@ export function PathfindingVisualization({
     }
   }
 
+  // --- Double-tap / double-click detection ----------------------------------
+
+  const handleTouchDoubleTapCheck = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "touch") return false
+
+    const now = performance.now()
+    const lastTime = lastTapTimeRef.current
+    const lastPos = lastTapPosRef.current
+
+    const TAP_THRESHOLD_MS = 300
+    const TAP_DISTANCE_PX = 30
+
+    let isDoubleTap = false
+
+    if (lastTime && now - lastTime < TAP_THRESHOLD_MS && lastPos) {
+      const dx = e.clientX - lastPos.x
+      const dy = e.clientY - lastPos.y
+      const dist = Math.hypot(dx, dy)
+      if (dist < TAP_DISTANCE_PX) {
+        isDoubleTap = true
+      }
+    }
+
+    if (isDoubleTap) {
+      // zoom in around tap
+      zoomAtPoint(DOUBLE_TAP_ZOOM, e.clientX, e.clientY)
+      lastTapTimeRef.current = null
+      lastTapPosRef.current = null
+      return true
+    } else {
+      lastTapTimeRef.current = now
+      lastTapPosRef.current = { x: e.clientX, y: e.clientY }
+      return false
+    }
+  }
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    zoomAtPoint(DOUBLE_TAP_ZOOM, e.clientX, e.clientY)
+  }
+
   // --- Pointer handlers: drag + pinch ---------------------------------------
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Double-tap zoom for touch
+    if (e.pointerType === "touch") {
+      const used = handleTouchDoubleTapCheck(e)
+      if (used) {
+        // don't start a drag / pinch for this tap
+        return
+      }
+    }
+
     const id = e.pointerId
     pointersRef.current.set(id, { x: e.clientX, y: e.clientY })
     ;(e.target as HTMLElement).setPointerCapture(id)
@@ -148,9 +209,9 @@ export function PathfindingVisualization({
     const pointers = [...pointersRef.current.entries()]
 
     if (pointers.length === 1) {
-      // start drag with this pointer
+      // start drag
       dragPointerIdRef.current = id
-      dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
+      lastDragPosRef.current = { x: e.clientX, y: e.clientY }
       lastPinchDistanceRef.current = null
     } else if (pointers.length === 2) {
       // start pinch
@@ -159,6 +220,7 @@ export function PathfindingVisualization({
       const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
       lastPinchDistanceRef.current = dist
       dragPointerIdRef.current = null
+      lastDragPosRef.current = null
     }
   }
 
@@ -170,12 +232,17 @@ export function PathfindingVisualization({
 
     const pointers = [...pointersRef.current.values()]
 
-    if (pointers.length === 1 && dragPointerIdRef.current === id) {
-      // drag (pan)
-      setPan({
-        x: e.clientX - dragStartRef.current.x,
-        y: e.clientY - dragStartRef.current.y,
-      })
+    if (pointers.length === 1 && dragPointerIdRef.current === id && lastDragPosRef.current) {
+      // drag (pan) – speed-boosted
+      const dx = (e.clientX - lastDragPosRef.current.x) * PAN_SPEED
+      const dy = (e.clientY - lastDragPosRef.current.y) * PAN_SPEED
+
+      lastDragPosRef.current = { x: e.clientX, y: e.clientY }
+
+      setPan((prev) => ({
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }))
     } else if (pointers.length >= 2 && lastPinchDistanceRef.current) {
       // pinch zoom
       e.preventDefault()
@@ -202,12 +269,13 @@ export function PathfindingVisualization({
     if (remaining.length === 0) {
       dragPointerIdRef.current = null
       lastPinchDistanceRef.current = null
+      lastDragPosRef.current = null
     } else if (remaining.length === 1) {
-      // if we were pinching and one finger lifts, remaining finger becomes drag
+      // if pinch ended, remaining finger becomes drag
       const [remainingId, point] = remaining[0]
       dragPointerIdRef.current = remainingId
-      dragStartRef.current = { x: point.x - pan.x, y: point.y - pan.y }
       lastPinchDistanceRef.current = null
+      lastDragPosRef.current = { x: point.x, y: point.y }
     }
   }
 
@@ -219,10 +287,10 @@ export function PathfindingVisualization({
     endPointer(e)
   }
 
-  // Mouse-wheel zoom (only when cursor is on map)
+  // Mouse-wheel zoom (only when cursor is over canvas)
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault() // stop page scroll while on canvas
-    const factor = e.deltaY < 0 ? 1.1 : 0.9
+    e.preventDefault() // stops page scroll while on canvas
+    const factor = e.deltaY < 0 ? WHEEL_ZOOM_IN : WHEEL_ZOOM_OUT
     zoomAtPoint(factor, e.clientX, e.clientY)
   }
 
@@ -481,6 +549,7 @@ export function PathfindingVisualization({
     onPointerCancel: handlePointerCancel,
     onPointerLeave: handlePointerUp,
     onWheel: handleWheel,
+    onDoubleClick: handleDoubleClick,
   } as const
 
   return (
