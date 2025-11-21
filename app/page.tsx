@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Users, Armchair, BarChart3 } from "lucide-react"
-import { RealTimeStatistics } from "@/components/real-time-statistics"
+/*import { RealTimeStatistics } from "@/components/real-time-statistics"*/
 
 export default function Home() {
   return (
@@ -15,13 +15,7 @@ export default function Home() {
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <RealTimeStatistics />
-        </div>
-
+          
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-300 hover:border-blue-400 transition-colors p-8 cursor-pointer group shadow-sm">
