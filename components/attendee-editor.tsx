@@ -27,10 +27,42 @@ interface AttendeeEditorProps {
   adminEmail: string
 }
 
+type CategoryOption = {
+  value: string
+  label: string
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  { value: "PMT", label: "PMT" },
+  { value: "Doctors/Dentists", label: "Doctors/Dentists" },
+  { value: "Partner Churches/MTLs", label: "Partner Churches/MTLs" },
+  { value: "From other churches", label: "From other churches" },
+  { value: "Major Donors", label: "Major Donors" },
+  { value: "Gideonites", label: "Gideonites" },
+  { value: "Paying Guests", label: "Paying Guests" },
+  { value: "WEYJ", label: "WEYJ" },
+  { value: "VIP", label: "VIP" },
+  { value: "Others", label: "Others" }, // placeholder for custom category
+]
+
 export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: AttendeeEditorProps) {
   const [editData, setEditData] = useState(attendee)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Determine if current category is a custom one (not in predefined list)
+  const isCustomCategory =
+    !!editData.category &&
+    !CATEGORY_OPTIONS.some((option) => option.value === editData.category)
+
+  const handleCategorySelectChange = (value: string) => {
+    if (value === "Others") {
+      // Clear category to allow custom input
+      setEditData({ ...editData, category: "" })
+    } else {
+      setEditData({ ...editData, category: value })
+    }
+  }
 
   const handleSave = async () => {
     const validation = validateAttendeeData(editData)
@@ -64,7 +96,7 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
         name: editData.name,
         email: editData.email,
         region: editData.region,
-        category: editData.category,
+        category: editData.category, // this will be custom text if "Others" is used
         assignedSeat: editData.assignedSeat || null,
       })
 
@@ -168,19 +200,37 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
                   <option value="International">International</option>
                 </select>
               </div>
+
+              {/* Category with "Others" + custom text */}
               <div>
                 <label className="text-slate-700 text-sm font-medium block mb-2">Category</label>
                 <select
-                  value={editData.category}
-                  onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                  value={isCustomCategory ? "Others" : editData.category}
+                  onChange={(e) => handleCategorySelectChange(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-blue-200 rounded-md text-slate-900 text-sm"
                 >
                   <option value="">Select Category</option>
-                  <option value="PMT">PMT</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Paying Guests">Paying Guests</option>
-                  <option value="Doctors/Dentists">Doctors/Dentists</option>
+                  {CATEGORY_OPTIONS.filter((opt) => opt.value !== "Others").map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  <option value="Others">Others (custom)</option>
                 </select>
+
+                {isCustomCategory && (
+                  <div className="mt-2">
+                    <Input
+                      value={editData.category}
+                      onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                      className="bg-white border-blue-200"
+                      placeholder="Enter custom category"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      You selected &quot;Others&quot;. Please specify the custom category.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -214,7 +264,7 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
             </div>
           </div>
 
-          {/* Check-in Status */}
+ a         {/* Check-in Status */}
           <div className="border-t border-blue-200 pt-6">
             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div>
