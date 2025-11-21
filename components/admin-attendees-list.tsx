@@ -21,6 +21,7 @@ import { PathfindingVisualization } from "@/components/pathfinding-visualization
 import { AddAttendeeDialog } from "@/components/add-attendee-dialog"
 import { CSVImportDialog } from "@/components/csv-import-dialog"
 import { generateCSV, downloadCSV } from "@/lib/csv-service"
+import { RealTimeStatistics } from "@/components/real-time-statistics"
 
 interface AdminAttendeesListProps {
   adminEmail?: string
@@ -196,6 +197,9 @@ export function AdminAttendeesList({ adminEmail = "" }: AdminAttendeesListProps)
               ))}
             </select>
           </div>
+        </div>
+        <div className="mt-8">
+        <RealTimeStatistics />
         </div>
       </Card>
 
