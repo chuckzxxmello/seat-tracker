@@ -13,6 +13,19 @@ interface AddAttendeeDialogProps {
   onSuccess: () => void
 }
 
+const CATEGORY_OPTIONS = [
+  { value: "PMT", label: "PMT" },
+  { value: "Doctors/Dentists", label: "Doctors/Dentists" },
+  { value: "Partner Churches/MTLs", label: "Partner Churches/MTLs" },
+  { value: "From other churches", label: "From other churches" },
+  { value: "Major Donors", label: "Major Donors" },
+  { value: "Gideonites", label: "Gideonites" },
+  { value: "Paying Guests", label: "Paying Guests" },
+  { value: "WEYJ", label: "WEYJ" },
+  { value: "VIP", label: "VIP" },
+  { value: "Others", label: "Others" }, // custom category option
+]
+
 export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -20,6 +33,7 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
     email: "",
     region: "",
     category: "",
+    customCategory: "",
     assignedSeat: null as number | null,
   })
   const [isSaving, setIsSaving] = useState(false)
@@ -33,7 +47,6 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
         console.log("[v0] AddAttendeeDialog: Loading venue map from Firebase...")
         const venueMap = await getVenueMap()
         if (venueMap && venueMap.nodes) {
-          // Extract tables and VIP tables
           const tables = venueMap.nodes
             .filter((node) => node.type === "table" || node.type === "vip-table")
             .map((node) => {
@@ -60,9 +73,25 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
   }, [])
 
   const handleSave = async () => {
+    // derive final category (handle "Others")
+    const trimmedCustom = formData.customCategory.trim()
+    const categoryToSave =
+      formData.category === "Others" ? trimmedCustom : formData.category
+
     // Validate form fields
-    if (!formData.name || !formData.ticketNumber || !formData.email || !formData.region || !formData.category) {
-      setError("Please fill in all required fields")
+    if (
+      !formData.name.trim() ||
+      !formData.ticketNumber.trim() ||
+      !formData.email.trim() ||
+      !formData.region ||
+      !formData.category ||
+      (formData.category === "Others" && !trimmedCustom)
+    ) {
+      setError(
+        formData.category === "Others" && !trimmedCustom
+          ? "Please specify the category in the textbox."
+          : "Please fill in all required fields"
+      )
       return
     }
 
@@ -70,13 +99,12 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
       setIsSaving(true)
       setError(null)
 
-      // Create attendee with seat assignment
       await createAttendee({
-        name: formData.name,
-        ticketNumber: formData.ticketNumber,
-        email: formData.email,
+        name: formData.name.trim(),
+        ticketNumber: formData.ticketNumber.trim(),
+        email: formData.email.trim(),
         region: formData.region,
-        category: formData.category,
+        category: categoryToSave,
         assignedSeat: formData.assignedSeat,
         table: formData.assignedSeat ? Math.ceil(formData.assignedSeat / 8) : null,
         checkedIn: false,
@@ -156,19 +184,43 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
                   <option value="International">International</option>
                 </select>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="text-slate-700 text-sm font-medium block mb-2">Category *</label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      category: e.target.value,
+                      // reset custom category if they leave "Others"
+                      customCategory: e.target.value === "Others" ? formData.customCategory : "",
+                    })
+                  }
                   className="w-full px-3 py-2 bg-white border border-blue-200 rounded-md text-slate-900 text-sm"
                 >
                   <option value="">Select Category</option>
-                  <option value="PMT">PMT</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Paying Guests">Paying Guests</option>
-                  <option value="Doctors/Dentists">Doctors/Dentists</option>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
+
+                {formData.category === "Others" && (
+                  <div className="mt-3">
+                    <label className="text-slate-700 text-xs font-medium block mb-1">
+                      Specify Category *
+                    </label>
+                    <Input
+                      value={formData.customCategory}
+                      onChange={(e) =>
+                        setFormData({ ...formData, customCategory: e.target.value })
+                      }
+                      className="bg-white border-blue-200"
+                      placeholder="Enter custom category"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -183,11 +235,16 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
               </p>
             ) : (
               <div>
-                <label className="text-slate-700 text-sm font-medium block mb-2">Assigned Seat (Optional)</label>
+                <label className="text-slate-700 text-sm font-medium block mb-2">
+                  Assigned Seat (Optional)
+                </label>
                 <select
                   value={formData.assignedSeat || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, assignedSeat: e.target.value ? Number.parseInt(e.target.value) : null })
+                    setFormData({
+                      ...formData,
+                      assignedSeat: e.target.value ? Number.parseInt(e.target.value) : null,
+                    })
                   }
                   className="w-full px-3 py-2 bg-white border border-blue-200 rounded-md text-slate-900 text-sm max-h-[200px]"
                 >
@@ -198,7 +255,9 @@ export function AddAttendeeDialog({ onClose, onSuccess }: AddAttendeeDialogProps
                     </option>
                   ))}
                 </select>
-                <p className="text-slate-500 text-xs mt-1">The assigned seat number represents the table number</p>
+                <p className="text-slate-500 text-xs mt-1">
+                  The assigned seat number represents the table number
+                </p>
                 <p className="text-emerald-600 text-xs mt-1">
                   ✓ Using saved venue layout ({availableTables.length} tables from Firebase)
                 </p>
