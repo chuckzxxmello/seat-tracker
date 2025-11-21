@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import type { PathResult } from "@/lib/dijkstra"
 
 interface VenueMapProps {
@@ -10,10 +10,11 @@ interface VenueMapProps {
   interactive?: boolean
 }
 
-const BASE_WIDTH = 1000
-const BASE_HEIGHT = 1200
+// Logical design size (what the drawing is built for)
+const DESIGN_WIDTH = 1000
+const DESIGN_HEIGHT = 1200
 
-// Layout constants (in base coordinates)
+// Table layout config (must match how you numbered seats)
 const TABLE_RADIUS = 12
 const TABLE_SPACING_X = 50
 const TABLE_SPACING_Y = 50
@@ -23,7 +24,7 @@ const SECTION_CONFIGS = [
   { startTable: 21, endTable: 40, startX: 550, startY: 150 },
   { startTable: 41, endTable: 60, startX: 80, startY: 500 },
   { startTable: 61, endTable: 80, startX: 550, startY: 500 },
-] as const
+]
 
 function getSeatPosition(seatNumber: number): { x: number; y: number } | null {
   if (seatNumber < 1 || seatNumber > 80) return null
@@ -50,98 +51,99 @@ export function VenueMap({
   interactive = false,
 }: VenueMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const wrapperRef = useRef<HTMLDivElement | null>(null)
 
-  const drawScene = useCallback(() => {
+  // Draw + responsive scaling
+  useEffect(() => {
     const canvas = canvasRef.current
-    const wrapper = wrapperRef.current
-    if (!canvas || !wrapper) return
+    if (!canvas) return
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const rect = wrapper.getBoundingClientRect()
-    if (rect.width === 0) return
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect()
 
-    const dpr = window.devicePixelRatio || 1
+      const displayWidth = rect.width || DESIGN_WIDTH
+      const displayHeight = rect.height || DESIGN_HEIGHT
 
-    // Make the map as wide as the wrapper, compute height by aspect ratio
-    const width = rect.width
-    const baseScale = width / BASE_WIDTH
+      const dpr = window.devicePixelRatio || 1
 
-    // On small screens, give it a bit more vertical space (looks “bigger”)
-    const zoomBoost = width < 640 ? 1.15 : 1 // tweak this if you want more/less zoom on mobile
-    const scale = baseScale * zoomBoost
-    const height = BASE_HEIGHT * scale
+      // Set backing store size
+      canvas.width = displayWidth * dpr
+      canvas.height = displayHeight * dpr
 
-    // Canvas size in device pixels
-    canvas.width = width * dpr
-    canvas.height = height * dpr
+      // Reset any existing transform
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // CSS size in layout pixels
-    canvas.style.width = `${width}px`
-    canvas.style.height = `${height}px`
+      // Coordinate system: scale DESIGN_WIDTH/HEIGHT into available size
+      const scale = Math.min(
+        displayWidth / DESIGN_WIDTH,
+        displayHeight / DESIGN_HEIGHT,
+      )
+      const offsetX = (displayWidth - DESIGN_WIDTH * scale) / 2
+      const offsetY = (displayHeight - DESIGN_HEIGHT * scale) / 2
 
-    // Draw in logical (1000×1200) coordinates, scaled & DPR-corrected
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0)
-    ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
+      // Map logical units → CSS pixels (then DPR)
+      ctx.save()
+      ctx.scale(dpr, dpr)
+      ctx.translate(offsetX, offsetY)
+      ctx.scale(scale, scale)
 
-    drawVenue(ctx)
+      // Draw everything in logical coordinates (0–1000, 0–1200)
+      drawVenue(ctx)
 
-    if (highlightPath && highlightPath.path.length > 0) {
-      drawPath(ctx, highlightPath)
+      if (highlightPath) {
+        drawPath(ctx, highlightPath)
+      }
+
+      if (selectedSeat) {
+        drawSelectedSeat(ctx, selectedSeat)
+      }
+
+      ctx.restore()
     }
 
-    if (selectedSeat) {
-      drawSelectedSeat(ctx, selectedSeat)
-    }
+    draw()
+    window.addEventListener("resize", draw)
+    return () => window.removeEventListener("resize", draw)
   }, [highlightPath, selectedSeat])
 
-  // Draw on first mount and whenever highlight/selection changes
-  useEffect(() => {
-    drawScene()
-  }, [drawScene])
-
-  // Redraw on resize so mobile/desktop always get correct scaling
-  useEffect(() => {
-    const wrapper = wrapperRef.current
-    if (!wrapper) return
-
-    const observer = new ResizeObserver(() => {
-      drawScene()
-    })
-    observer.observe(wrapper)
-
-    return () => observer.disconnect()
-  }, [drawScene])
-
-  // Click handler (for attendee side)
+  // Seat clicking (optional)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !interactive || !onSeatClick) return
 
     const handleClick = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
-      const cssX = event.clientX - rect.left
-      const cssY = event.clientY - rect.top
+      const displayWidth = rect.width || DESIGN_WIDTH
+      const displayHeight = rect.height || DESIGN_HEIGHT
 
-      // Convert from CSS pixels back to base coordinates
-      const baseScale = rect.width / BASE_WIDTH
-      const zoomBoost = rect.width < 640 ? 1.15 : 1
-      const scale = baseScale * zoomBoost
+      // Same scale + offsets as in draw()
+      const scale = Math.min(
+        displayWidth / DESIGN_WIDTH,
+        displayHeight / DESIGN_HEIGHT,
+      )
+      const offsetX = (displayWidth - DESIGN_WIDTH * scale) / 2
+      const offsetY = (displayHeight - DESIGN_HEIGHT * scale) / 2
 
-      const x = cssX / scale
-      const y = cssY / scale
+      const canvasX = event.clientX - rect.left
+      const canvasY = event.clientY - rect.top
 
-      const CLICK_RADIUS = TABLE_RADIUS + 6
+      // Convert back to logical coordinates
+      const worldX = (canvasX - offsetX) / scale
+      const worldY = (canvasY - offsetY) / scale
+
+      const CLICK_RADIUS = TABLE_RADIUS + 8
       let clickedSeat: number | null = null
 
       for (let seat = 1; seat <= 80; seat++) {
         const pos = getSeatPosition(seat)
         if (!pos) continue
-        const dx = x - pos.x
-        const dy = y - pos.y
-        if (Math.sqrt(dx * dx + dy * dy) <= CLICK_RADIUS) {
+        const dx = worldX - pos.x
+        const dy = worldY - pos.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        if (distance <= CLICK_RADIUS) {
           clickedSeat = seat
           break
         }
@@ -157,23 +159,26 @@ export function VenueMap({
   }, [interactive, onSeatClick])
 
   return (
-    <div
-      ref={wrapperRef}
-      className="w-full max-w-3xl mx-auto border-2 border-blue-200 rounded-lg bg-white overflow-hidden"
-    >
-      <canvas ref={canvasRef} className="block w-full h-full" />
-    </div>
+    <canvas
+      ref={canvasRef}
+      /* Taller on mobile so the map really fills the viewport */
+      className="border-2 border-blue-200 rounded-lg bg-white w-full h-[85vh] sm:h-[75vh] md:h-[650px] max-w-none mx-auto"
+    />
   )
 }
 
-/* -------------------- Drawing helpers (base 1000×1200) -------------------- */
+/* ---------- Drawing helpers (logical coordinates) ---------- */
 
 function drawVenue(ctx: CanvasRenderingContext2D) {
+  // Background
   ctx.fillStyle = "#ffffff"
-  ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
+  ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT)
+
+  ctx.strokeStyle = "#1e40af"
+  ctx.lineWidth = 2
 
   // Stage
-  ctx.fillStyle = "#1d4ed8"
+  ctx.fillStyle = "#001f3f"
   ctx.fillRect(150, 30, 700, 80)
   ctx.fillStyle = "#ffffff"
   ctx.font = "bold 24px Arial"
@@ -181,16 +186,15 @@ function drawVenue(ctx: CanvasRenderingContext2D) {
   ctx.textBaseline = "middle"
   ctx.fillText("STAGE", 500, 70)
 
+  // Circular table sections
   const drawSeatingSection = (
     startX: number,
     startY: number,
     rows: number,
     cols: number,
     startTableNumber: number,
-    isVip = false,
   ) => {
     let tableNumber = startTableNumber
-    const tableRadius = isVip ? 14 : TABLE_RADIUS
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
@@ -198,11 +202,10 @@ function drawVenue(ctx: CanvasRenderingContext2D) {
         const y = startY + row * TABLE_SPACING_Y
 
         ctx.beginPath()
-        ctx.arc(x, y, tableRadius, 0, Math.PI * 2)
-        ctx.fillStyle = isVip ? "#ef4444" : "#1d4ed8"
+        ctx.arc(x, y, TABLE_RADIUS, 0, Math.PI * 2)
+        ctx.fillStyle = "#1d4ed8"
         ctx.fill()
         ctx.strokeStyle = "#1e3a8a"
-        ctx.lineWidth = 1.5
         ctx.stroke()
 
         ctx.fillStyle = "#ffffff"
@@ -216,23 +219,15 @@ function drawVenue(ctx: CanvasRenderingContext2D) {
     }
   }
 
-  // Standard seating blocks (1–80)
+  // 4 blocks of tables (1–80)
   drawSeatingSection(80, 150, 4, 5, 1) // 1–20
   drawSeatingSection(550, 150, 4, 5, 21) // 21–40
   drawSeatingSection(80, 500, 4, 5, 41) // 41–60
   drawSeatingSection(550, 500, 4, 5, 61) // 61–80
 
-  // VIP labels (just labels)
-  ctx.fillStyle = "#1e40af"
-  ctx.font = "bold 12px Arial"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
-  ctx.fillText("VIP TABLE 1-2", 460, 220)
-  ctx.fillText("VIP TABLE 3-4", 460, 260)
-
   // Buffet blocks
-  const drawBuffetArea = (x: number, y: number, label: string) => {
-    ctx.fillStyle = "#111827"
+  const drawBuffet = (x: number, y: number, label: string) => {
+    ctx.fillStyle = "#000000"
     ctx.fillRect(x, y, 80, 80)
     ctx.fillStyle = "#ffffff"
     ctx.font = "bold 10px Arial"
@@ -241,10 +236,10 @@ function drawVenue(ctx: CanvasRenderingContext2D) {
     ctx.fillText(label, x + 40, y + 40)
   }
 
-  drawBuffetArea(50, 250, "BUFFET 1")
-  drawBuffetArea(900 - 80, 250, "BUFFET 4")
-  drawBuffetArea(50, 600, "BUFFET 2")
-  drawBuffetArea(900 - 80, 600, "BUFFET 3")
+  drawBuffet(50, 250, "BUFFET 1")
+  drawBuffet(900 - 80, 250, "BUFFET 4")
+  drawBuffet(50, 600, "BUFFET 2")
+  drawBuffet(900 - 80, 600, "BUFFET 3")
 
   // Entrance
   ctx.fillStyle = "#059669"
@@ -256,7 +251,7 @@ function drawVenue(ctx: CanvasRenderingContext2D) {
   ctx.fillText("MAIN ENTRANCE", 500, 1165)
 
   // Photo exhibit
-  ctx.fillStyle = "#f59e0b"
+  ctx.fillStyle = "#1e3a8a"
   ctx.fillRect(250, 1000, 500, 60)
   ctx.fillStyle = "#ffffff"
   ctx.font = "bold 14px Arial"
@@ -285,6 +280,7 @@ function drawPath(ctx: CanvasRenderingContext2D, result: PathResult) {
   ctx.stroke()
   ctx.setLineDash([])
 
+  // Start/end markers
   result.path.forEach((node, index) => {
     ctx.beginPath()
     ctx.arc(node.x, node.y, index === 0 ? 8 : 5, 0, Math.PI * 2)
