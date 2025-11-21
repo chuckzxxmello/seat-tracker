@@ -46,7 +46,7 @@ export function PathfindingVisualization({
   const lastTapPosRef = useRef<{ x: number; y: number } | null>(null)
 
   // tuning
-  const PAN_SPEED = 1.4                 // >1 = faster slide
+  const PAN_SPEED = 1.4
   const WHEEL_ZOOM_IN = 1.2
   const WHEEL_ZOOM_OUT = 0.8
   const DOUBLE_TAP_ZOOM = 1.6
@@ -174,7 +174,6 @@ export function PathfindingVisualization({
     }
 
     if (isDoubleTap) {
-      // zoom in around tap
       zoomAtPoint(DOUBLE_TAP_ZOOM, e.clientX, e.clientY)
       lastTapTimeRef.current = null
       lastTapPosRef.current = null
@@ -197,7 +196,6 @@ export function PathfindingVisualization({
     if (e.pointerType === "touch") {
       const used = handleTouchDoubleTapCheck(e)
       if (used) {
-        // don't start a drag / pinch for this tap
         return
       }
     }
@@ -209,12 +207,10 @@ export function PathfindingVisualization({
     const pointers = [...pointersRef.current.entries()]
 
     if (pointers.length === 1) {
-      // start drag
       dragPointerIdRef.current = id
       lastDragPosRef.current = { x: e.clientX, y: e.clientY }
       lastPinchDistanceRef.current = null
     } else if (pointers.length === 2) {
-      // start pinch
       const [, p1] = pointers[0]
       const [, p2] = pointers[1]
       const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
@@ -233,7 +229,6 @@ export function PathfindingVisualization({
     const pointers = [...pointersRef.current.values()]
 
     if (pointers.length === 1 && dragPointerIdRef.current === id && lastDragPosRef.current) {
-      // drag (pan) – speed-boosted
       const dx = (e.clientX - lastDragPosRef.current.x) * PAN_SPEED
       const dy = (e.clientY - lastDragPosRef.current.y) * PAN_SPEED
 
@@ -244,7 +239,6 @@ export function PathfindingVisualization({
         y: prev.y + dy,
       }))
     } else if (pointers.length >= 2 && lastPinchDistanceRef.current) {
-      // pinch zoom
       e.preventDefault()
       const [p1, p2] = pointers
       const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
@@ -271,7 +265,6 @@ export function PathfindingVisualization({
       lastPinchDistanceRef.current = null
       lastDragPosRef.current = null
     } else if (remaining.length === 1) {
-      // if pinch ended, remaining finger becomes drag
       const [remainingId, point] = remaining[0]
       dragPointerIdRef.current = remainingId
       lastPinchDistanceRef.current = null
@@ -289,7 +282,7 @@ export function PathfindingVisualization({
 
   // Mouse-wheel zoom (only when cursor is over canvas)
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault() // stops page scroll while on canvas
+    e.preventDefault()
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_IN : WHEEL_ZOOM_OUT
     zoomAtPoint(factor, e.clientX, e.clientY)
   }
@@ -377,12 +370,19 @@ export function PathfindingVisualization({
     const contentWidth = maxX - minX
     const contentHeight = maxY - minY
 
-    const canvasWidth = 1400
-    const scale = canvasWidth / contentWidth
-    const canvasHeight = Math.ceil(contentHeight * scale)
+    // Use container size (fullscreen or embedded) instead of fixed 1400px
+    const parent = canvas.parentElement as HTMLElement | null
+    const canvasWidth = parent?.clientWidth ?? 1400
+    const canvasHeight =
+      parent?.clientHeight ?? Math.ceil((contentHeight / contentWidth) * canvasWidth)
 
     canvas.width = canvasWidth
     canvas.height = canvasHeight
+
+    // Scale so that the whole map fits inside the container
+    const scaleX = canvasWidth / contentWidth
+    const scaleY = canvasHeight / contentHeight
+    const scale = Math.min(scaleX, scaleY)
 
     ctx.fillStyle = "#FFFFFF"
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -542,7 +542,6 @@ export function PathfindingVisualization({
 
   const canvasProps = {
     ref: canvasRef,
-    className: "w-full h-full object-contain cursor-move touch-none", // touch-none => touch-action: none
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
@@ -565,8 +564,11 @@ export function PathfindingVisualization({
               <Minimize2 className="w-5 h-5" />
             </Button>
           </div>
-          <div ref={containerRef} className="flex-1 overflow-hidden bg-white">
-            <canvas {...canvasProps} />
+          <div ref={containerRef} className="relative flex-1 overflow-hidden bg-white">
+            <canvas
+              {...canvasProps}
+              className="absolute inset-0 w-full h-full cursor-move touch-none"
+            />
           </div>
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-center gap-3">
             <Button variant="outline" size="icon" onClick={handleZoomOut}>
@@ -608,9 +610,15 @@ export function PathfindingVisualization({
           </div>
         )}
 
-        <div className="w-full bg-white flex items-center justify-center p-3 md:p-4">
-          <div className="w-full h-[75vh] md:h-[550px] lg:h-[650px] max-w-full">
-            <canvas {...canvasProps} />
+        <div className="w-full bg-white p-3 md:p-4">
+          <div
+            ref={containerRef}
+            className="relative w-full h-[75vh] md:h-[550px] lg:h-[650px] max-w-full"
+          >
+            <canvas
+              {...canvasProps}
+              className="absolute inset-0 w-full h-full cursor-move touch-none"
+            />
           </div>
         </div>
       </Card>
