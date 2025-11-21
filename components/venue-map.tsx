@@ -297,7 +297,16 @@ export function VenueMap({
   return (
     <canvas
       ref={canvasRef}
-      className="border-2 border-blue-200 rounded-lg bg-white w-full h-[70vh] md:h-[650px] max-w-none mx-auto"
+      className="
+        w-full 
+        h-[120vw]          /* Bigger on mobile – responsive square-ish */
+        max-h-[900px]      /* Prevents extreme tallness on tablets */
+        md:h-[700px]       /* Desktop height */
+        border-2 border-blue-200
+        rounded-lg 
+        bg-white
+        mx-auto
+      "
     />
   )
 }
