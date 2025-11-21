@@ -27,12 +27,11 @@ interface AttendeeEditorProps {
   adminEmail: string
 }
 
-type CategoryOption = {
-  value: string
-  label: string
+type EditData = Attendee & {
+  customCategory?: string
 }
 
-const CATEGORY_OPTIONS: CategoryOption[] = [
+const CATEGORY_OPTIONS = [
   { value: "PMT", label: "PMT" },
   { value: "Doctors/Dentists", label: "Doctors/Dentists" },
   { value: "Partner Churches/MTLs", label: "Partner Churches/MTLs" },
@@ -42,38 +41,71 @@ const CATEGORY_OPTIONS: CategoryOption[] = [
   { value: "Paying Guests", label: "Paying Guests" },
   { value: "WEYJ", label: "WEYJ" },
   { value: "VIP", label: "VIP" },
-  { value: "Others", label: "Others" }, // placeholder for custom category
+  { value: "Others", label: "Others" }, // custom category option
 ]
 
 export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: AttendeeEditorProps) {
-  const [editData, setEditData] = useState(attendee)
+  // Initialize state similar to AddAttendee, but mapping existing attendee data
+  const [editData, setEditData] = useState<EditData>(() => {
+    const isKnownCategory =
+      !!attendee.category &&
+      CATEGORY_OPTIONS.some(
+        (opt) => opt.value === attendee.category && opt.value !== "Others"
+      )
+
+    // If category is one of our known options (except "Others"), no custom text
+    if (isKnownCategory) {
+      return {
+        ...attendee,
+        customCategory: "",
+      }
+    }
+
+    // If category is empty
+    if (!attendee.category) {
+      return {
+        ...attendee,
+        category: "",
+        customCategory: "",
+      }
+    }
+
+    // Otherwise, treat as custom: show "Others" and put original value into textbox
+    return {
+      ...attendee,
+      category: "Others",
+      customCategory: attendee.category,
+    }
+  })
+
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Determine if current category is a custom one (not in predefined list)
-  const isCustomCategory =
-    !!editData.category &&
-    !CATEGORY_OPTIONS.some((option) => option.value === editData.category)
-
-  const handleCategorySelectChange = (value: string) => {
-    if (value === "Others") {
-      // Clear category to allow custom input
-      setEditData({ ...editData, category: "" })
-    } else {
-      setEditData({ ...editData, category: value })
-    }
-  }
-
   const handleSave = async () => {
-    const validation = validateAttendeeData(editData)
+    const trimmedCustom = (editData.customCategory || "").trim()
+    const categoryToSave =
+      editData.category === "Others" ? trimmedCustom : editData.category
+
+    // Extra validation for "Others" same as AddAttendee
+    if (editData.category === "Others" && !trimmedCustom) {
+      setError("Please specify the category in the textbox.")
+      return
+    }
+
+    // Use the final category for validation
+    const validation = validateAttendeeData({
+      ...editData,
+      category: categoryToSave,
+    })
     if (!validation.valid) {
       setError(validation.errors.join(", "))
       return
     }
 
+    // Only check capacity when assigned seat changes
     if (editData.assignedSeat && editData.assignedSeat !== attendee.assignedSeat) {
       try {
-        const isVIP = editData.category === "VIP"
+        const isVIP = categoryToSave === "VIP"
         const tableNumber = editData.assignedSeat
         const capacity = await checkTableCapacity(tableNumber, isVIP)
 
@@ -93,10 +125,10 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
       setError(null)
 
       await updateAttendee(attendee.id, {
-        name: editData.name,
-        email: editData.email,
+        name: editData.name.trim(),
+        email: editData.email.trim(),
         region: editData.region,
-        category: editData.category, // this will be custom text if "Others" is used
+        category: categoryToSave, // store final category (custom if needed)
         assignedSeat: editData.assignedSeat || null,
       })
 
@@ -104,7 +136,7 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
         changes: {
           name: editData.name !== attendee.name ? editData.name : undefined,
           region: editData.region !== attendee.region ? editData.region : undefined,
-          category: editData.category !== attendee.category ? editData.category : undefined,
+          category: categoryToSave !== attendee.category ? categoryToSave : undefined,
           assignedSeat: editData.assignedSeat !== attendee.assignedSeat ? editData.assignedSeat : undefined,
         },
       })
@@ -201,34 +233,43 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
                 </select>
               </div>
 
-              {/* Category with "Others" + custom text */}
-              <div>
+              {/* Category (mirrors AddAttendee behaviour) */}
+              <div className="md:col-span-2">
                 <label className="text-slate-700 text-sm font-medium block mb-2">Category</label>
                 <select
-                  value={isCustomCategory ? "Others" : editData.category}
-                  onChange={(e) => handleCategorySelectChange(e.target.value)}
+                  value={editData.category}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      category: e.target.value,
+                      // reset custom category if they leave "Others"
+                      customCategory:
+                        e.target.value === "Others" ? editData.customCategory : "",
+                    })
+                  }
                   className="w-full px-3 py-2 bg-white border border-blue-200 rounded-md text-slate-900 text-sm"
                 >
                   <option value="">Select Category</option>
-                  {CATEGORY_OPTIONS.filter((opt) => opt.value !== "Others").map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
-                  <option value="Others">Others (custom)</option>
                 </select>
 
-                {isCustomCategory && (
-                  <div className="mt-2">
+                {editData.category === "Others" && (
+                  <div className="mt-3">
+                    <label className="text-slate-700 text-xs font-medium block mb-1">
+                      Specify Category
+                    </label>
                     <Input
-                      value={editData.category}
-                      onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                      value={editData.customCategory || ""}
+                      onChange={(e) =>
+                        setEditData({ ...editData, customCategory: e.target.value })
+                      }
                       className="bg-white border-blue-200"
                       placeholder="Enter custom category"
                     />
-                    <p className="text-slate-500 text-xs mt-1">
-                      You selected &quot;Others&quot;. Please specify the custom category.
-                    </p>
                   </div>
                 )}
               </div>
@@ -240,7 +281,9 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Seating Arrangement</h3>
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-slate-700 text-sm font-medium block mb-2">Assigned Seat (Table Number)</label>
+                <label className="text-slate-700 text-sm font-medium block mb-2">
+                  Assigned Seat (Table Number)
+                </label>
                 <Input
                   type="number"
                   min="1"
@@ -264,12 +307,14 @@ export function AttendeeEditor({ attendee, onClose, onSave, adminEmail }: Attend
             </div>
           </div>
 
- a         {/* Check-in Status */}
+          {/* Check-in Status */}
           <div className="border-t border-blue-200 pt-6">
             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div>
                 <p className="text-slate-900 font-medium text-sm">Check-in Status</p>
-                <p className="text-slate-600 text-xs mt-1">{editData.checkedIn ? "Checked in" : "Pending check-in"}</p>
+                <p className="text-slate-600 text-xs mt-1">
+                  {editData.checkedIn ? "Checked in" : "Pending check-in"}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <div
