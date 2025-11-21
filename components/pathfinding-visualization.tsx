@@ -28,8 +28,9 @@ export function PathfindingVisualization({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // canvas zoom/pan (view-space)
   const [zoom, setZoom] = useState(1)
-  const [initialZoom, setInitialZoom] = useState(1) // 👈 base zoom depending on screen
+  const [initialZoom, setInitialZoom] = useState(1)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -54,24 +55,6 @@ export function PathfindingVisualization({
       }
     }
     loadVenueData()
-  }, [])
-
-  // Set an initial zoom level based on viewport (bigger on mobile)
-  useEffect(() => {
-    const updateZoomForViewport = () => {
-      if (typeof window === "undefined") return
-      const width = window.innerWidth
-      const isMobile = width < 768
-
-      const newZoom = isMobile ? 1.7 : 1.1 // tweak to taste
-      setInitialZoom(newZoom)
-      setZoom(newZoom)
-      setPan({ x: 0, y: 0 })
-    }
-
-    updateZoomForViewport()
-    window.addEventListener("resize", updateZoomForViewport)
-    return () => window.removeEventListener("resize", updateZoomForViewport)
   }, [])
 
   // Validate the requested seat exists
@@ -134,7 +117,6 @@ export function PathfindingVisualization({
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.25, 0.5))
 
   const handleResetView = () => {
-    // use our viewport-based base zoom instead of hard-coded 1
     setZoom(initialZoom)
     setPan({ x: 0, y: 0 })
   }
@@ -142,7 +124,6 @@ export function PathfindingVisualization({
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev)
     if (!isFullscreen) {
-      // when going into fullscreen, reset to the base zoom
       handleResetView()
     }
   }
@@ -155,18 +136,87 @@ export function PathfindingVisualization({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Compute bounds of all nodes
+    // --- COMPUTE BOUNDS ------------------------------------------------------
     const allX = venueNodes.map((n) => n.x)
     const allY = venueNodes.map((n) => n.y)
-    const minX = Math.min(...allX) - 100
-    const maxX = Math.max(...allX) + 100
-    const minY = Math.min(...allY) - 100
-    const maxY = Math.max(...allY) + 100
+    const rawMinX = Math.min(...allX)
+    const rawMaxX = Math.max(...allX)
+    const rawMinY = Math.min(...allY)
+    const rawMaxY = Math.max(...allY)
+
+    const rawWidth = rawMaxX - rawMinX
+    const rawHeight = rawMaxY - rawMinY
+
+    // Find selected node (for centering/zooming)
+    const selectedNode = (() => {
+      if (!seatId) return null
+      return venueNodes.find((node) => {
+        const tableNum = node.label.match(/\d+/)?.[0]
+        const isSelectedType =
+          (isVip && node.type === "vip-table") || (!isVip && node.type === "table")
+        return isSelectedType && tableNum === String(seatId)
+      })
+    })()
+
+    // Base bounds (full map)
+    let focusMinX = rawMinX
+    let focusMaxX = rawMaxX
+    let focusMinY = rawMinY
+    let focusMaxY = rawMaxY
+
+    // If we have a selected node, crop the bounds a bit around it
+    // so that it appears near the center with a mild zoom.
+    if (selectedNode) {
+      const focusFactor = 1.4 // 1.0 = full map, >1 = zoom in
+      const focusWidth = rawWidth / focusFactor
+      const focusHeight = rawHeight / focusFactor
+
+      let desiredMinX = selectedNode.x - focusWidth / 2
+      let desiredMaxX = selectedNode.x + focusWidth / 2
+      let desiredMinY = selectedNode.y - focusHeight / 2
+      let desiredMaxY = selectedNode.y + focusHeight / 2
+
+      // Clamp horizontally within full bounds
+      if (desiredMinX < rawMinX) {
+        const diff = rawMinX - desiredMinX
+        desiredMinX += diff
+        desiredMaxX += diff
+      }
+      if (desiredMaxX > rawMaxX) {
+        const diff = desiredMaxX - rawMaxX
+        desiredMinX -= diff
+        desiredMaxX -= diff
+      }
+
+      // Clamp vertically within full bounds
+      if (desiredMinY < rawMinY) {
+        const diff = rawMinY - desiredMinY
+        desiredMinY += diff
+        desiredMaxY += diff
+      }
+      if (desiredMaxY > rawMaxY) {
+        const diff = desiredMaxY - rawMaxY
+        desiredMinY -= diff
+        desiredMaxY -= diff
+      }
+
+      focusMinX = desiredMinX
+      focusMaxX = desiredMaxX
+      focusMinY = desiredMinY
+      focusMaxY = desiredMaxY
+    }
+
+    // Add a bit of outer margin (to remove huge white borders / keep fit)
+    const margin = 40
+    const minX = focusMinX - margin
+    const maxX = focusMaxX + margin
+    const minY = focusMinY - margin
+    const maxY = focusMaxY + margin
 
     const contentWidth = maxX - minX
     const contentHeight = maxY - minY
 
-    // Logical canvas size (bigger for better resolution)
+    // Logical canvas size (fixed width for resolution, height by aspect)
     const canvasWidth = 1400
     const scale = canvasWidth / contentWidth
     const canvasHeight = Math.ceil(contentHeight * scale)
@@ -301,7 +351,13 @@ export function PathfindingVisualization({
     })
 
     ctx.restore()
-  }, [seatId, venueNodes, isVip, zoom, pan])
+
+    // initial zoom: 1:1
+    if (initialZoom !== 1) {
+      setInitialZoom(1)
+      setZoom(1)
+    }
+  }, [seatId, venueNodes, isVip, zoom, pan, initialZoom])
 
   if (isLoading) {
     return (
@@ -392,9 +448,9 @@ export function PathfindingVisualization({
           </div>
         )}
 
-        {/* Bigger map on mobile */}
+        {/* Map area (fits width on mobile, tall enough to feel full-screen-ish) */}
         <div className="w-full bg-white flex items-center justify-center p-3 md:p-4">
-          <div className="w-full h-[80vh] md:h-[550px] lg:h-[650px] max-w-full">
+          <div className="w-full h-[75vh] md:h-[550px] lg:h-[650px] max-w-full">
             <canvas
               ref={canvasRef}
               className="w-full h-full object-contain cursor-move touch-none"
