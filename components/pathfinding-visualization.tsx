@@ -29,6 +29,7 @@ export function PathfindingVisualization({
   const [error, setError] = useState<string | null>(null)
 
   const [zoom, setZoom] = useState(1)
+  const [initialZoom, setInitialZoom] = useState(1) // 👈 base zoom depending on screen
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -53,6 +54,24 @@ export function PathfindingVisualization({
       }
     }
     loadVenueData()
+  }, [])
+
+  // Set an initial zoom level based on viewport (bigger on mobile)
+  useEffect(() => {
+    const updateZoomForViewport = () => {
+      if (typeof window === "undefined") return
+      const width = window.innerWidth
+      const isMobile = width < 768
+
+      const newZoom = isMobile ? 1.7 : 1.1 // tweak to taste
+      setInitialZoom(newZoom)
+      setZoom(newZoom)
+      setPan({ x: 0, y: 0 })
+    }
+
+    updateZoomForViewport()
+    window.addEventListener("resize", updateZoomForViewport)
+    return () => window.removeEventListener("resize", updateZoomForViewport)
   }, [])
 
   // Validate the requested seat exists
@@ -115,13 +134,15 @@ export function PathfindingVisualization({
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.25, 0.5))
 
   const handleResetView = () => {
-    setZoom(1)
+    // use our viewport-based base zoom instead of hard-coded 1
+    setZoom(initialZoom)
     setPan({ x: 0, y: 0 })
   }
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev)
     if (!isFullscreen) {
+      // when going into fullscreen, reset to the base zoom
       handleResetView()
     }
   }
@@ -373,7 +394,7 @@ export function PathfindingVisualization({
 
         {/* Bigger map on mobile */}
         <div className="w-full bg-white flex items-center justify-center p-3 md:p-4">
-          <div className="w-full h-[65vh] md:h-[550px] lg:h-[650px] max-w-full">
+          <div className="w-full h-[80vh] md:h-[550px] lg:h-[650px] max-w-full">
             <canvas
               ref={canvasRef}
               className="w-full h-full object-contain cursor-move touch-none"
