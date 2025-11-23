@@ -1,6 +1,7 @@
 "use client"
 
 import { VenueMapEditor } from "@/components/venue-map-editor"
+import "../../styles/globals.css"
 import { AdminAttendeesList } from "@/components/admin-attendees-list"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"

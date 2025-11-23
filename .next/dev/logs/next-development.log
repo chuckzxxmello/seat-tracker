@@ -1,0 +1,93 @@
+[00:00:02.665] Server  LOG      ✓ Ready in 1933ms
+[00:00:18.689] Server  LOG      ○ Compiling / ...
+[00:00:25.891] Server  LOG     [v0] Firebase initialized successfully with project: "seating-arrangement-20ffd"
+[00:00:26.677] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:26.878] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:00:26.878] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:00:26.878] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:00:26.878] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:00:26.878] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:00:26.878] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:00:26.878] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","r":"","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763914701958}
+[00:01:36.618] Server  LOG      ○ Compiling /checkin ...
+[00:01:37.665] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763914772739}
+[00:03:22.098] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763914877165}
+[00:08:33.144] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915188219}
+[00:08:37.567] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915192647}
+[00:09:47.959] Server  LOG      ✓ Compiled in 1245ms
+[00:12:54.038] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915449071}
+[00:12:54.038] Browser ERROR   uncaughtError: TypeError: Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function.
+[00:13:07.386] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[00:13:07.465] Server  LOG      ✓ Compiled in 922ms
+[00:13:07.588] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915462597}
+[00:13:08.055] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:13:08.274] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:13:08.274] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:13:08.274] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:13:08.274] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:13:08.274] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:13:08.274] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:13:08.274] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915463355}
+[00:13:10.092] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915465171}
+[00:13:37.984] Server  LOG      ✓ Compiled in 380ms
+[00:15:03.467] Server  LOG      ✓ Compiled in 427ms
+[00:15:46.384] Server  LOG      ✓ Compiled in 876ms
+[00:16:04.005] Server  LOG      ✓ Compiled in 314ms
+[00:16:06.818] Server  LOG     [v0] Firebase initialized successfully with project: "seating-arrangement-20ffd"
+[00:16:07.199] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:16:07.454] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:16:07.454] Browser WARN    Image with src "/images/BTSL-removebg-preview.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[00:16:07.454] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:16:07.454] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/checkin","route":"/checkin"}
+[00:16:07.454] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915642510}
+[00:16:07.454] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:16:07.454] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:16:07.454] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:16:52.470] Server  LOG      ✓ Compiled in 377ms
+[00:17:15.845] Server  LOG      ✓ Compiled in 322ms
+[00:18:37.341] Server  LOG      ✓ Compiled in 509ms
+[00:19:07.503] Server  LOG      ✓ Compiled in 792ms
+[00:19:12.034] Server  LOG     [v0] Firebase initialized successfully with project: "seating-arrangement-20ffd"
+[00:19:12.676] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:19:13.064] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:19:14.060] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:19:14.060] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/checkin","route":"/checkin"}
+[00:19:14.060] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915828449}
+[00:19:40.417] Server  LOG      ✓ Compiled in 371ms
+[00:19:40.769] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:19:40.769] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:19:40.769] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:21:16.289] Server  LOG      ✓ Compiled in 390ms
+[00:21:20.066] Server  LOG     [v0] Firebase initialized successfully with project: "seating-arrangement-20ffd"
+[00:21:20.328] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:21:20.522] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:21:20.522] Browser WARN    Image with src "/images/LGN__1_-removebg-preview.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[00:21:20.522] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:21:20.522] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/checkin","route":"/checkin"}
+[00:21:20.522] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763915955598}
+[00:21:20.522] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:21:20.522] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:21:20.522] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:23:54.226] Server  LOG      ✓ Compiled in 852ms
+[00:23:56.439] Server  LOG     [v0] Firebase initialized successfully with project: "seating-arrangement-20ffd"
+[00:23:56.726] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:23:56.897] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:23:56.898] Browser WARN    Image with src "/images/LGN__1_-removebg-preview.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[00:23:56.898] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:23:56.898] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/checkin","route":"/checkin"}
+[00:23:56.898] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763916111972}
+[00:23:56.898] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:23:56.898] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:23:56.898] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:28:02.565] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:28:02.813] Browser LOG     [v0] Firebase initialized successfully with project: seating-arrangement-20ffd
+[00:28:02.813] Browser WARN    Image with src "http://localhost:3000/images/Logo__2_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:28:02.813] Browser WARN    Image with src "http://localhost:3000/images/LGN__1_-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:28:02.813] Browser WARN    Image with src "http://localhost:3000/images/BTSL-removebg-preview.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:28:02.813] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:28:02.813] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:28:02.813] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","r":"","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763916357893}
+[00:28:04.612] Browser LOG     %c[Vercel Web Analytics]%c [pageview] http://localhost:3000/checkin color: rgb(120, 120, 120) color: inherit {"dp":"/checkin","o":"http://localhost:3000/checkin","sdkn":"@vercel/analytics/next","sdkv":"1.5.0","sv":"0.1.3","ts":1763916359684}

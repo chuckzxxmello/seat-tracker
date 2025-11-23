@@ -9,6 +9,7 @@ import Link from "next/link"
 import { PathfindingVisualization } from "@/components/pathfinding-visualization"
 import { searchAttendees, checkInAttendee, cancelCheckIn, logAudit, checkTableCapacity } from "@/lib/firebase-service"
 import { useAuth } from "@/lib/auth-context"
+import Image from 'next/image'
 
 export default function CheckinPage() {
   const { user } = useAuth()
@@ -106,25 +107,49 @@ export default function CheckinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <header className="border-b border-blue-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+    <div className="bg-[oklch(0.13_0.05_260)]">
+      <header className="bg-[oklch(0.13_0.05_260)]">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 md:py-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl md:text-3xl font-bold text-slate-900 truncate">Attendee Check-in</h1>
-              <p className="text-slate-600 text-xs md:text-sm mt-1 hidden sm:block">
-                Search and check in attendees with real-time seat tracking
-              </p>
+           <header className="bg-[oklch(0.13_0.05_260)]">
+                   <div className="max-w-7xl mx-auto px-6 py-6 bg-[oklch(0.13_0.05_260)]">
+                      <div className="flex flex-col items-center">
+                           <Image
+                             src="/images/Logo__2_-removebg-preview.png"
+                             width={100}
+                             height={100}
+                             alt="Picture of the author"
+                           />
+           
+                           <Image
+                             src="/images/LGN__1_-removebg-preview.png"
+                             width={400}
+                             height={400}
+                             alt="Picture of the author"
+                           />
+           
+                           <Image
+                             src="/images/BTSL-removebg-preview.png"
+                             width={400}
+                             height={400}
+                             alt="Picture of the author"
+                           />
+                           
+                     </div>
+                   </div>
+                   
+                 </header>
             </div>
             <Link href="/">
-              <Button
+              {/*<Button
                 variant="outline"
                 size="sm"
                 className="border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent flex items-center gap-1 md:gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Back</span>
-              </Button>
+              </Button>*/}
             </Link>
           </div>
         </div>
@@ -153,7 +178,7 @@ export default function CheckinPage() {
             <Button
               onClick={handleSearch}
               disabled={!searchInput || isSearching}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 md:px-8 h-11 md:h-12 w-full sm:w-auto"
+              className="bg-[oklch(0.13_0.05_260)] text-white px-6 md:px-8 h-11 md:h-12 w-full sm:w-auto"
             >
               {isSearching ? "Searching..." : "Search"}
             </Button>
@@ -187,14 +212,14 @@ export default function CheckinPage() {
                       <CheckCircle2 className="w-5 h-5" />
                       <span className="text-sm md:text-base">Checked In</span>
                     </div>
-                    <Button
+                    {/*<Button
                       onClick={handleCancelCheckIn}
                       disabled={isSearching}
                       variant="outline"
                       className="border-red-300 text-red-600 hover:bg-red-50 bg-transparent w-full sm:w-auto h-11"
                     >
                       {isSearching ? "Processing..." : "Cancel Check-in"}
-                    </Button>
+                    </Button>*/}
                   </>
                 )}
               </div>
